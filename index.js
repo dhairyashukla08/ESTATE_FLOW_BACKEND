@@ -19,6 +19,7 @@ const corsOptions = {
   origin: ["http://localhost:5173","https://estate-flow-frontend.netlify.app/"],
   methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
   credentials: true,
+  optionsSuccessStatus: 200
 };
 
 app.use(express.json({ limit: "10mb" }));
