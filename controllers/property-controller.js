@@ -15,6 +15,7 @@ export const createProperty = async (req, res) => {
       bedrooms,
       bathrooms,
       areaSize,
+      furnishedStatus,
       highlights,
       images,
     } = req.body;
@@ -29,6 +30,7 @@ export const createProperty = async (req, res) => {
         bedrooms: bedrooms || 0,
         bathrooms: bathrooms || 0,
         areaSize,
+        furnishedStatus: purpose === "Rent" ? (furnishedStatus || "Unfurnished") : undefined,
       },
       highlights: highlights || [],
       images: images || [],
@@ -149,6 +151,10 @@ export const updateProperty = async (req, res) => {
             bedrooms: req.body.bedrooms,
             bathrooms: req.body.bathrooms,
             areaSize: req.body.areaSize,
+            furnishedStatus:
+              req.body.purpose === "Rent"
+                ? (req.body.furnishedStatus || "Unfurnished")
+                : undefined,
           },
         },
       },
