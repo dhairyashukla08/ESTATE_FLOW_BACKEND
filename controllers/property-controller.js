@@ -47,20 +47,47 @@ export const createProperty = async (req, res) => {
 
 export const getProperties = async (req, res) => {
   try {
-    const { city, purpose, category, minPrice, maxPrice } = req.query;
+    const { city, purpose, category, minPrice, maxPrice, minArea, maxArea, bedrooms, bathrooms, furnishing, sort,} = req.query;
     let query = {};
-    if (city) query["address.city"] = new RegExp(city, "i");
+    const csv = (v) => String(v).split(",").map((s) => s.trim()).filter(Boolean);
+    if (city) query["address.city"] = new RegExp(city.trim(), "i");
     if (purpose) query.purpose = purpose;
     if (category) query.category = category;
+    if (furnishing) query["features.furnishedStatus"] = { $in: csv(furnishing) };
     if (minPrice || maxPrice) {
       query.price = {};
       if (minPrice) query.price.$gte = Number(minPrice);
       if (maxPrice) query.price.$lte = Number(maxPrice);
     }
 
+     if (minArea || maxArea) {
+      query["features.areaSize"] = {};
+      if (minArea) query["features.areaSize"].$gte = Number(minArea);
+      if (maxArea) query["features.areaSize"].$lte = Number(maxArea);
+    }
+
+    if (bathrooms) query["features.bathrooms"] = { $gte: Number(bathrooms) };
+
+     if (bedrooms) {
+      const nums = csv(bedrooms).map(Number).filter((n) => !Number.isNaN(n));
+      const exact = nums.filter((n) => n < 5);
+      const or = [];
+      if (exact.length) or.push({ "features.bedrooms": { $in: exact } });
+      if (nums.some((n) => n >= 5)) or.push({ "features.bedrooms": { $gte: 5 } });
+      if (or.length === 1) Object.assign(query, or[0]);
+      else if (or.length > 1) query.$or = or;
+    }
+
+     const sortMap = {
+      price_asc: { price: 1 },
+      price_desc: { price: -1 },
+      area_desc: { "features.areaSize": -1 },
+      newest: { createdAt: -1 },
+    };
+
     const properties = await Property.find(query)
       .populate("agent", "name phoneNumber")
-      .sort({ createdAt: -1 });
+      .sort(sortMap[sort] || { createdAt: -1 });
     res.status(200).json(properties);
   } catch (error) {
     console.error("Backend Error:", error);

@@ -32,18 +32,46 @@ export const addPlot = async (req, res) => {
 
 export const getAllPlots = async (req, res) => {
   try {
-    const { city, minPrice, maxPrice } = req.query;
+       const { city, propertyType, minPrice, maxPrice, minArea, maxArea, sort } = req.query;
     let query = {};
-    if (city) query["address.city"] = { $regex: city, $options: "i" };
+    const csv = (v) => String(v).split(",").map((s) => s.trim()).filter(Boolean);
+    if (city) query["address.city"] = { $regex: city.trim(), $options: "i" };
+
+    if (propertyType) query.propertyType = { $in: csv(propertyType) };
     if (minPrice || maxPrice) {
       query.price = {};
       if (minPrice) query.price.$gte = Number(minPrice);
       if (maxPrice) query.price.$lte = Number(maxPrice);
     }
+
+    if (minArea || maxArea) {
+      query["features.plotArea"] = {};
+      if (minArea) query["features.plotArea"].$gte = Number(minArea);
+      if (maxArea) query["features.plotArea"].$lte = Number(maxArea);
+    }
+
+     const sortMap = {
+      price_asc: { price: 1 },
+      price_desc: { price: -1 },
+      area_desc: { "features.plotArea": -1 },
+      newest: { createdAt: -1 },
+    };
+
+
     const plots = await Plot.find(query)
       .populate("agent", "name email phoneNumber")
-      .sort("-createdAt");
+      .sort(sortMap[sort] || { createdAt: -1 });
     res.status(200).json(plots);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+export const getPlotById = async (req, res) => {
+  try {
+    const plot = await Plot.findById(req.params.id).populate("agent", "name email phoneNumber");
+    if (!plot) return res.status(404).json({ message: "Plot not found" });
+    res.status(200).json(plot);
   } catch (error) {
     res.status(500).json({ message: error.message });
   }

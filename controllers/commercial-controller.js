@@ -48,18 +48,32 @@ export const addCommercialProperty = async (req, res) => {
 
 export const getAllCommercial = async (req, res) => {
   try {
-    const { city, purpose, minPrice, maxPrice } = req.query;
+       const { city, purpose, propertyType, minPrice, maxPrice, minArea, maxArea, sort } = req.query;
     let query = {};
-    if (city) query["address.city"] = { $regex: city, $options: "i" };
+    const csv = (v) => String(v).split(",").map((s) => s.trim()).filter(Boolean);
+    if (city) query["address.city"] = { $regex: city.trim(), $options: "i" };
     if (purpose) query.purpose = purpose;
+    if (propertyType) query.propertyType = { $in: csv(propertyType) };
     if (minPrice || maxPrice) {
       query.price = {};
       if (minPrice) query.price.$gte = Number(minPrice);
       if (maxPrice) query.price.$lte = Number(maxPrice);
     }
+    if (minArea || maxArea) {
+      query["features.carpetArea"] = {};
+      if (minArea) query["features.carpetArea"].$gte = Number(minArea);
+      if (maxArea) query["features.carpetArea"].$lte = Number(maxArea);
+    }
+
+    const sortMap = {
+      price_asc: { price: 1 },
+      price_desc: { price: -1 },
+      area_desc: { "features.carpetArea": -1 },
+      newest: { createdAt: -1 },
+    };
     const properties = await Commercial.find(query)
       .populate("agent", "name email phoneNumber")
-      .sort("-createdAt");
+       .sort(sortMap[sort] || { createdAt: -1 });
     res.status(200).json(properties);
   } catch (error) {
     res.status(500).json({ message: error.message });
